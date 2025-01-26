@@ -20,6 +20,19 @@ def readDatas():
     return user_dict
 
 
+
+def readItemsDatas():
+    path = "../ml-latest-small/ml-latest-small/ratings.csv"
+    # 只读取0,1列
+    datas = pd.read_csv(path, usecols=[0, 1])
+    item_dict = dict()
+    for d in datas.values:
+        if d[1] in item_dict:
+            item_dict[d[1]].add(d[0])
+        else:
+            item_dict[d[1]] = {d[0]}
+    return item_dict
+
 def getTrainsetAndTestset(dct: Dict):
     trainset, testset = dict(), dict()
     for uid in dct:
@@ -54,6 +67,14 @@ def get_recomedations(user_sims, o_set):
             recomendation[u] |= o_set[sim['id']] - o_set[u]
     return recomendation
 
+def get_recomedations_by_itemCF(item_sims,o_set):
+    recomendation = dict()
+    for u in tqdm(o_set):
+        recomendation[u] = set()
+        for item in o_set[u]:
+            recomendation[u] |= set(i['id'] for i in item_sims[item]) - o_set[u]
+    return recomendation
+
 def precisionAndRecall(pre, test):
     p, r = 0,0
     for uid in test:
@@ -63,14 +84,20 @@ def precisionAndRecall(pre, test):
     return p / len(test),r / len(test)
 
 
+
 def play():
     odatas = readDatas()
+    item_datas = readItemsDatas()
     trset, test = getTrainsetAndTestset(odatas)
     user_sims = knn(trset, 5)
+    item_sims = knn(item_datas,5)
     # print(user_sims)
     pre_set = get_recomedations(user_sims, trset)
+    pre_itemCF_set = get_recomedations_by_itemCF(item_sims,trset)
     p,r = precisionAndRecall(pre_set,test)
+    pi,ri = precisionAndRecall(pre_itemCF_set,test)
     print(p,r)
+    print(pi,ri)
 
 
 
